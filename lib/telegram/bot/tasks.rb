@@ -5,7 +5,7 @@ module Telegram
     module Tasks
       extend self
 
-      def set_webhook
+      def set_webhook(allowed_updates: nil)
         routes = Rails.application.routes.url_helpers
         cert_file = ENV.fetch('CERT', nil)
         cert = File.open(cert_file) if cert_file
@@ -18,6 +18,7 @@ module Telegram
             certificate: cert,
             ip_address: ENV.fetch('IP_ADDRESS', nil),
             drop_pending_updates: drop_pending_updates,
+            allowed_updates: allowed_updates,
           )
         end
       end

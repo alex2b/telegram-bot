@@ -16,9 +16,10 @@ module Telegram
           new(bot, controller).tap { |x| instances[bot] = x }
         end
 
-        def start(bot_id, controller = nil)
+        def start(bot_id, controller = nil, allowed_updates: nil)
           bot = bot_id.is_a?(Symbol) ? Telegram.bots[bot_id] : Client.wrap(bot_id)
           instance = controller ? new(bot, controller) : instances[bot]
+          instance.allowed_updates = allowed_updates
           raise "Poller not found for #{bot_id.inspect}" unless instance
           instance.start
         end
@@ -27,6 +28,7 @@ module Telegram
       DEFAULT_TIMEOUT = 5
 
       attr_reader :bot, :controller, :timeout, :offset, :logger, :running, :reload
+      attr_accessor :allowed_updates
 
       def initialize(bot, controller, **options)
         @logger = options.fetch(:logger) { defined?(Rails.logger) && Rails.logger }
@@ -35,6 +37,7 @@ module Telegram
         @timeout = options.fetch(:timeout) { DEFAULT_TIMEOUT }
         @offset = options[:offset]
         @reload = options.fetch(:reload) { defined?(Rails.env) && Rails.env.development? }
+        @allowed_updates = options.fetch(:allowed_updates) { nil }
       end
 
       def log(&block)
@@ -70,7 +73,8 @@ module Telegram
       end
 
       def fetch_updates(offset = self.offset)
-        response = bot.async(false) { bot.get_updates(offset: offset, timeout: timeout) }
+        puts "fetch, allowed_updates: #{@allowed_updates}"
+        response = bot.async(false) { bot.get_updates(offset: offset, timeout: timeout, allowed_updates: @allowed_updates) }
         response.is_a?(Array) ? response : response['result']
       rescue Timeout::Error
         log { 'Fetch timeout' }

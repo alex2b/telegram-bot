@@ -4,7 +4,10 @@ namespace :telegram do
   namespace :bot do
     desc 'Run poller. It broadcasts Rails.logger to STDOUT in dev like `rails s` do. ' \
       'Use LOG_TO_STDOUT to enable/disable broadcasting.'
-    task :poller do
+    task :poller, [:all_updates] do |t, args|
+      args.with_defaults(all_updates: nil)
+      allowed_updates = Telegram::Bot::UpdatesController::PAYLOAD_TYPES if args[:all_updates]
+
       ENV['BOT_POLLER_MODE'] = 'true'
       Rake::Task['environment'].invoke
       if ENV.fetch('LOG_TO_STDOUT') { Rails.env.development? }.present?
@@ -15,12 +18,15 @@ namespace :telegram do
           Rails.logger.extend ActiveSupport::Logger.broadcast console
         end
       end
-      Telegram::Bot::UpdatesPoller.start(ENV['BOT']&.to_sym || :default)
+      Telegram::Bot::UpdatesPoller.start(ENV['BOT']&.to_sym || :default, nil, allowed_updates: allowed_updates)
     end
 
     desc 'Set webhook urls for all bots'
-    task set_webhook: :environment do
-      Telegram::Bot::Tasks.set_webhook
+    task :set_webhook, [:all] => :environment do |_, args|
+      args.with_defaults(all_updates: nil)
+      allowed_updates = Telegram::Bot::UpdatesController::PAYLOAD_TYPES if args[:all_updates]
+
+      Telegram::Bot::Tasks.set_webhook(allowed_updates: allowed_updates)
     end
 
     desc 'Delete webhooks for all or specific BOT'
